@@ -169,7 +169,6 @@ void compute_advection(int nx_local,
     double dtheta_dt[nx_local+2][NY][NZ]) {
 
     // advection: du/dt + u*(du/dx) + v(dv/dy) + w(dw/dz) = 0, ignoring w (vertical)
-    #pragma omp parallel for collapse(3)
     for (int i = 1; i < nx_local+1; i++) {
         for (int j = 0; j < NY; j++) {
             for (int k = 0; k < NZ; k++) {
@@ -208,7 +207,6 @@ void apply_tendencies(int nx_local,
     double dtheta_dt[nx_local+2][NY][NZ]) {
 
     // euler's method (for now)
-    #pragma omp parallel for collapse(3)
     for (int i = 1; i < nx_local+1; i++) {
         for (int j = 0; j < NY; j++) {
             for (int k = 0; k < NZ; k++) {
