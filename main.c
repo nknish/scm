@@ -18,6 +18,11 @@ void compute_advection(int nx_local,
     double du_dt[nx_local+2][NY][NZ],
     double dv_dt[nx_local+2][NY][NZ],
     double dtheta_dt[nx_local+2][NY][NZ]);
+void compute_coriolis(int nx_local,
+    double u[nx_local+2][NY][NZ],
+    double v[nx_local+2][NY][NZ],
+    double du_dt[nx_local+2][NY][NZ],
+    double dv_dt[nx_local+2][NY][NZ]);
 void apply_tendencies(int nx_local,
     double u[nx_local+2][NY][NZ],
     double v[nx_local+2][NY][NZ],
@@ -77,8 +82,11 @@ int main (int argc, char* argv[]) {
         exchange_halos(nx_local, v, left, right);
         exchange_halos(nx_local, theta, left, right);
 
-        // advect
+        // advection
         compute_advection(nx_local, u, v, theta, du_dt, dv_dt, dtheta_dt);
+
+        // coriolis
+        compute_coriolis(nx_local, u, v, du_dt, dv_dt);
 
         // numerical time-step
         apply_tendencies(nx_local, u, v, theta, du_dt, dv_dt, dtheta_dt);
@@ -193,6 +201,24 @@ void compute_advection(int nx_local,
                 double dtheta_dx = (theta[i+1][j][k] - theta[i-1][j][k]) / (2 * DX);
                 double dtheta_dy = (theta[i][jp][k] - theta[i][jm][k]) / (2 * DY);
                 dtheta_dt[i][j][k] = - (u[i][j][k]*dtheta_dx + v[i][j][k]*dtheta_dy); 
+            }
+        }
+    }
+}
+
+void compute_coriolis(int nx_local,
+    double u[nx_local+2][NY][NZ],
+    double v[nx_local+2][NY][NZ],
+    double du_dt[nx_local+2][NY][NZ],
+    double dv_dt[nx_local+2][NY][NZ]) {
+
+    // coriolis: subtract f*v from du/dt, add f*u to dv/dt
+    double f = 10e-4;
+    for (int i = 1; i < nx_local+1; i++) {
+        for (int j = 0; j < NY; j++) {
+            for (int k = 0; k < NZ; k++) {
+                du_dt[i][j][k] -= f * v[i][j][k];
+                dv_dt[i][j][k] += f * u[i][j][k];
             }
         }
     }
