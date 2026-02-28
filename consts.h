@@ -15,4 +15,6 @@
 #define SEND_L 90
 #define SEND_R 91
 
+#define F_CORIOLIS 1e-4
+
 #endif
