@@ -100,6 +100,7 @@ int main (int argc, char* argv[]) {
             print_slice(rank, nx_local, u, v, "in loop");
     }
 
+    // wrap up timer and output
     MPI_Barrier(MPI_COMM_WORLD);
     t_end = MPI_Wtime();
     t_elapsed = t_end - t_start;
@@ -108,14 +109,16 @@ int main (int argc, char* argv[]) {
     fflush(stdout);
     MPI_Barrier(MPI_COMM_WORLD);
 
+    if (rank == 0)
+        printf("total time for %d timesteps: %f\n", NUM_T_STEPS, t_elapsed);
+
     // free memory and finalize
     free(u);
     free(v);
     free(theta);
-
-    MPI_Barrier(MPI_COMM_WORLD);
-    if (rank == 0)
-        printf("total time for %d timesteps: %f\n", NUM_T_STEPS, t_elapsed);
+    free(du_dt);
+    free(dv_dt);
+    free(dtheta_dt);
 
     MPI_Finalize();
     return 0;
