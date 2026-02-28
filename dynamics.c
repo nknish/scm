@@ -92,9 +92,11 @@ void compute_coriolis(int nx_local,
     // coriolis: subtract f*v from du/dt, add f*u to dv/dt
     for (int i = 1; i < nx_local+1; i++) {
         for (int j = 0; j < NY; j++) {
+            double phi = ((j * PI / NY) - (PI/2)) * 0.99;
             for (int k = 0; k < NZ; k++) {
-                du_dt[i][j][k] -= F_CORIOLIS * v[i][j][k];
-                dv_dt[i][j][k] += F_CORIOLIS * u[i][j][k];
+                double f = 2*OMEGA*sin(phi);
+                du_dt[i][j][k] -= f * v[i][j][k];
+                dv_dt[i][j][k] += f * u[i][j][k];
             }
         }
     }
