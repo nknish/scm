@@ -5,7 +5,7 @@
 
 #include "consts.h"
 #include "dynamics.h"
-#include "euler.h"
+#include "rk2.h"
 #include "io.h"
 
 int main (int argc, char* argv[]) {
@@ -34,15 +34,27 @@ int main (int argc, char* argv[]) {
     int left = ((rank - 1) + num_ranks) % num_ranks;
     int right = (rank + 1) % num_ranks;
 
-    // allocate data arrays (+2 in x dimension for halo zones) and tendency (d_field/dt) array
+    // allocate data arrays (+2 in x dimension for halo zones)
+    // and tendency/temporary arrays for rk2
     double (*u)[NY][NZ] = malloc(sizeof(double[nx_local+2][NY][NZ]));
     double (*v)[NY][NZ] = malloc(sizeof(double[nx_local+2][NY][NZ]));
     double (*theta)[NY][NZ] = malloc(sizeof(double[nx_local+2][NY][NZ]));
-    double (*du_dt)[NY][NZ] = malloc(sizeof(double[nx_local+2][NY][NZ]));
-    double (*dv_dt)[NY][NZ] = malloc(sizeof(double[nx_local+2][NY][NZ]));
-    double (*dtheta_dt)[NY][NZ] = malloc(sizeof(double[nx_local+2][NY][NZ]));
-    if (!u || !v || !theta || !du_dt || !dv_dt || !dtheta_dt) {
-        fprintf(stderr, "memory allocation failed.\n");
+    double (*k1_u)[NY][NZ] = malloc(sizeof(double[nx_local+2][NY][NZ]));
+    double (*k1_v)[NY][NZ] = malloc(sizeof(double[nx_local+2][NY][NZ]));
+    double (*k1_theta)[NY][NZ] = malloc(sizeof(double[nx_local+2][NY][NZ]));
+    double (*k2_u)[NY][NZ] = malloc(sizeof(double[nx_local+2][NY][NZ]));
+    double (*k2_v)[NY][NZ] = malloc(sizeof(double[nx_local+2][NY][NZ]));
+    double (*k2_theta)[NY][NZ] = malloc(sizeof(double[nx_local+2][NY][NZ]));
+    double (*u_tmp)[NY][NZ] = malloc(sizeof(double[nx_local+2][NY][NZ]));
+    double (*v_tmp)[NY][NZ] = malloc(sizeof(double[nx_local+2][NY][NZ]));
+    double (*theta_tmp)[NY][NZ] = malloc(sizeof(double[nx_local+2][NY][NZ]));
+
+    if (!u || !v || !theta || !u_tmp || !v_tmp || !theta_tmp) {
+        fprintf(stderr, "data-array memory allocation failed.\n");
+        MPI_Abort(MPI_COMM_WORLD, 2);
+    }
+    if (!k1_u || !k1_v || !k1_theta || !k2_u || !k2_v || !k2_theta) {
+        fprintf(stderr, "tendency-array memory allocation failed.\n");
         MPI_Abort(MPI_COMM_WORLD, 2);
     }
 
@@ -55,9 +67,7 @@ int main (int argc, char* argv[]) {
     t_start = MPI_Wtime();
 
     for (int t = 0; t < NUM_T_STEPS; t++) {
-        // new version
-        compute_rhs(nx_local, u, v, theta, du_dt, dv_dt, dtheta_dt, left, right);
-        time_integrate(nx_local, u, v, theta, du_dt, dv_dt, dtheta_dt);
+        rk2_step(nx_local, u, v, theta, k1_u, k1_v, k1_theta, k2_u, k2_v, k2_theta, u_tmp, v_tmp, theta_tmp, left, right);
 
         // sanity check
         if (t % 200 == 0 && rank == 0)
@@ -80,9 +90,15 @@ int main (int argc, char* argv[]) {
     free(u);
     free(v);
     free(theta);
-    free(du_dt);
-    free(dv_dt);
-    free(dtheta_dt);
+    free(k1_u);
+    free(k1_v);
+    free(k1_theta);
+    free(k2_u);
+    free(k2_v);
+    free(k2_theta);
+    free(u_tmp);
+    free(v_tmp);
+    free(theta_tmp);
 
     MPI_Finalize();
     return 0;
