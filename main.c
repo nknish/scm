@@ -1,11 +1,15 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <math.h>
 
 #include "mpi.h"
 
 #include "consts.h"
 
-void print_slice(int rank, int nx_local, double u[nx_local+2][NY][NZ], const char* msg);
+void print_slice(int rank, int nx_local,
+    double u[nx_local+2][NY][NZ],
+    double v[nx_local+2][NY][NZ],
+    const char* msg);
 void exchange_halos(int nx_local, double field[nx_local+2][NY][NZ], int left, int right);
 void init_fields(int rank, int nx_local,
     double u[nx_local+2][NY][NZ],
@@ -70,7 +74,7 @@ int main (int argc, char* argv[]) {
 
     // initialize fields
     init_fields(rank, nx_local, u, v, theta);
-    print_slice(rank, nx_local, u, "initial conditions, before first exchange");
+    print_slice(rank, nx_local, u, v, "initial conditions, before first exchange");
 
     // sync up and start timer
     MPI_Barrier(MPI_COMM_WORLD);
@@ -90,16 +94,17 @@ int main (int argc, char* argv[]) {
 
         // numerical time-step
         apply_tendencies(nx_local, u, v, theta, du_dt, dv_dt, dtheta_dt);
-        
-        if (t % 200 == 0)
-            print_slice(rank, nx_local, u, "after advection step");
+
+        // sanity check
+        if (t % 200 == 0 && rank == 0)
+            print_slice(rank, nx_local, u, v, "in loop");
     }
 
     MPI_Barrier(MPI_COMM_WORLD);
     t_end = MPI_Wtime();
     t_elapsed = t_end - t_start;
 
-    print_slice(rank, nx_local, u, "final state");
+    print_slice(rank, nx_local, u, v, "final state");
     fflush(stdout);
     MPI_Barrier(MPI_COMM_WORLD);
 
@@ -116,11 +121,15 @@ int main (int argc, char* argv[]) {
     return 0;
 }
 
-void print_slice (int rank, int nx_local, double u[nx_local+2][NY][NZ], const char* msg) {
-    printf("Rank %d: %s\t", rank, msg);
-    for (int i = 0; i < nx_local+2; i++) {
-        printf("%6.1f ", u[i][0][0]);  // print y=0, z=0 slice
-    }
+void print_slice (int rank, int nx_local, double u[nx_local+2][NY][NZ], double v[nx_local+2][NY][NZ], const char* msg) {
+    //arbitrary point on the grid
+    int x = 12;
+    int y = 15;
+    int z = 2;
+    int real_x = x + nx_local * rank;
+    double mag = sqrt(pow(u[x][y][z], 2) + pow(v[x][y][z], 2));
+    printf("Rank %d at(%d,%d,%d): %s\t", rank, real_x, y, z, msg);
+    printf("u: %6.1f \tv: %6.1f \t|u|: %6.1f", u[x][y][z], v[x][y][z], mag);
     printf("\n");
     fflush(stdout);
 }
