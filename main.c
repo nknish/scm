@@ -5,7 +5,6 @@
 
 #include "consts.h"
 #include "dynamics.h"
-#include "mpi_utils.h"
 #include "io.h"
 
 int main (int argc, char* argv[]) {
@@ -55,19 +54,9 @@ int main (int argc, char* argv[]) {
     t_start = MPI_Wtime();
 
     for (int t = 0; t < NUM_T_STEPS; t++) {
-        // halo exchange
-        exchange_halos(nx_local, u, left, right);
-        exchange_halos(nx_local, v, left, right);
-        exchange_halos(nx_local, theta, left, right);
-
-        // advection
-        compute_advection(nx_local, u, v, theta, du_dt, dv_dt, dtheta_dt);
-
-        // coriolis
-        compute_coriolis(nx_local, u, v, du_dt, dv_dt);
-
-        // numerical time-step
-        apply_tendencies(nx_local, u, v, theta, du_dt, dv_dt, dtheta_dt);
+        // new version
+        compute_rhs(nx_local, u, v, theta, du_dt, dv_dt, dtheta_dt, left, right);
+        time_integrate(nx_local, u, v, theta, du_dt, dv_dt, dtheta_dt);
 
         // sanity check
         if (t % 200 == 0 && rank == 0)

@@ -1,6 +1,6 @@
 #include "consts.h"
 
-void apply_tendencies(int nx_local,
+void time_integrate(int nx_local,
     double u[nx_local+2][NY][NZ],
     double v[nx_local+2][NY][NZ],
     double theta[nx_local+2][NY][NZ],

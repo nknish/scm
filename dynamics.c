@@ -1,6 +1,7 @@
 #include <math.h>
 
 #include "consts.h"
+#include "mpi_utils.h"
 
 void init_fields (int rank, int nx_local, double u[nx_local+2][NY][NZ], double v[nx_local+2][NY][NZ], double theta[nx_local+2][NY][NZ]) {
     // initilize u with a special pattern
@@ -23,6 +24,22 @@ void init_fields (int rank, int nx_local, double u[nx_local+2][NY][NZ], double v
             for (int k = 0; k < NZ; k++) {
                 v[i][j][k] = (double) rank;
                 theta[i][j][k] = (double) rank;
+            }
+        }
+    }
+}
+
+void zero_tendencies(int nx_local,
+    double du_dt[nx_local+2][NY][NZ],
+    double dv_dt[nx_local+2][NY][NZ],
+    double dtheta_dt[nx_local+2][NY][NZ]) {
+
+    for (int i = 0; i < nx_local + 2; i++) {
+        for (int j = 0; j < NY; j++) {
+            for (int k = 0; k < NZ; k++) {
+                du_dt[i][j][k] = 0;
+                dv_dt[i][j][k] = 0;
+                dtheta_dt[i][j][k] = 0;
             }
         }
     }
@@ -83,3 +100,24 @@ void compute_coriolis(int nx_local,
     }
 }
 
+void compute_rhs(int nx_local,
+    double u[nx_local+2][NY][NZ],
+    double v[nx_local+2][NY][NZ],
+    double theta[nx_local+2][NY][NZ],
+    double du_dt[nx_local+2][NY][NZ],
+    double dv_dt[nx_local+2][NY][NZ],
+    double dtheta_dt[nx_local+2][NY][NZ],
+    int left,
+    int right) {
+
+    zero_tendencies(nx_local, du_dt, dv_dt, dtheta_dt);
+
+    // comunication
+    exchange_halos(nx_local, u, left, right);
+    exchange_halos(nx_local, v, left, right);
+    exchange_halos(nx_local, theta, left, right);
+
+    // computation
+    compute_advection(nx_local, u, v, theta, du_dt, dv_dt, dtheta_dt);
+    compute_coriolis(nx_local, u, v, du_dt, dv_dt);
+}
